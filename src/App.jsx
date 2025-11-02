@@ -1,28 +1,28 @@
-import { useState } from 'react'
+import React from 'react';
+import HeroSpline from './components/HeroSpline';
+import StoryScroll3D from './components/StoryScroll3D';
+import AudioToggle from './components/AudioToggle';
+import CustomCursor from './components/CustomCursor';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">
-          Vibe Coding Platform
-        </h1>
-        <p className="text-gray-600 mb-6">
-          Your AI-powered development environment
-        </p>
-        <div className="text-center">
-          <button
-            onClick={() => setCount(count + 1)}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
-          >
-            Count is {count}
-          </button>
+    <div className="min-h-screen w-screen bg-black font-['Inter','ui-sans-serif',system-ui]">
+      <CustomCursor />
+      <AudioToggle />
+      <HeroSpline />
+      <StoryScroll3D />
+
+      {/* Footer credit / ending */}
+      <section className="relative z-10 -mt-px bg-black py-16 text-center text-white">
+        <div className="mx-auto max-w-4xl px-6">
+          <h3 className="text-2xl font-semibold">Thank you for traveling</h3>
+          <p className="mt-2 text-white/70">
+            You just navigated a living story told with light, motion, and sound.
+          </p>
         </div>
-      </div>
+      </section>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
