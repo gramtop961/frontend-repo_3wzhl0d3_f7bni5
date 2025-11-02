@@ -4,7 +4,7 @@ import { ScrollControls, Scroll, useScroll, PerspectiveCamera } from '@react-thr
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
 
-function Particles({ count = 1200, spread = 120 }) {
+function Particles({ count = 1000, spread = 140 }) {
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -21,24 +21,42 @@ function Particles({ count = 1200, spread = 120 }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
       </bufferGeometry>
-      <pointsMaterial color="#9ec6ff" size={0.08} sizeAttenuation depthWrite={false} transparent opacity={0.85} />
+      <pointsMaterial color="#dbeafe" size={0.08} sizeAttenuation depthWrite={false} transparent opacity={0.85} />
     </points>
   );
 }
 
 function NeonCity() {
   const group = useRef();
+
+  const palette = useMemo(
+    () => [
+      // Cool
+      { base: '#38bdf8', emissive: '#22d3ee' }, // sky/cyan
+      { base: '#60a5fa', emissive: '#93c5fd' }, // blue
+      { base: '#7c3aed', emissive: '#a78bfa' }, // violet
+      { base: '#06b6d4', emissive: '#22d3ee' }, // cyan
+      // Warm accents
+      { base: '#f59e0b', emissive: '#fbbf24' }, // amber
+      { base: '#ef4444', emissive: '#fb7185' }, // red
+      { base: '#f472b6', emissive: '#f9a8d4' }, // pink
+      { base: '#10b981', emissive: '#34d399' }, // emerald
+    ],
+    []
+  );
+
   const boxes = useMemo(() => {
     const b = [];
     const grid = 10;
     for (let x = -grid; x <= grid; x++) {
       for (let z = -grid; z <= grid; z++) {
         const h = Math.random() * 6 + 1.5;
-        b.push({ position: [x * 1.5, h / 2, z * 1.5], height: h });
+        const colorIdx = Math.floor(Math.random() * palette.length);
+        b.push({ position: [x * 1.5, h / 2, z * 1.5], height: h, ci: colorIdx });
       }
     }
     return b;
-  }, []);
+  }, [palette]);
 
   useFrame(() => {
     if (!group.current) return;
@@ -47,39 +65,70 @@ function NeonCity() {
 
   return (
     <group ref={group}>
-      {boxes.map((b, i) => (
-        <mesh key={i} position={b.position} castShadow receiveShadow>
-          <boxGeometry args={[1, b.height, 1]} />
-          <meshPhysicalMaterial
-            color="#3b82f6"
-            emissive="#6ea8ff"
-            emissiveIntensity={2.2}
-            roughness={0.25}
-            metalness={0.6}
-            clearcoat={0.6}
-            clearcoatRoughness={0.3}
-          />
-        </mesh>
-      ))}
+      {boxes.map((b, i) => {
+        const { base, emissive } = palette[b.ci];
+        // Slight per-building variation
+        const rough = THREE.MathUtils.clamp(0.2 + Math.random() * 0.3, 0.15, 0.6);
+        const metal = THREE.MathUtils.clamp(0.4 + Math.random() * 0.4, 0.3, 0.85);
+        const eInt = 0.6 + Math.random() * 1.6; // soft to bright
+        return (
+          <mesh key={i} position={b.position} castShadow receiveShadow>
+            <boxGeometry args={[1, b.height, 1]} />
+            <meshPhysicalMaterial
+              color={base}
+              emissive={emissive}
+              emissiveIntensity={eInt}
+              roughness={rough}
+              metalness={metal}
+              clearcoat={0.7}
+              clearcoatRoughness={0.35}
+            />
+          </mesh>
+        );
+      })}
     </group>
   );
 }
 
-function GlowingHorizon() {
+function SunAndHorizon() {
+  const sun = useRef();
+
+  useFrame(({ clock }) => {
+    if (sun.current) {
+      const t = clock.getElapsedTime();
+      sun.current.rotation.y = t * 0.1;
+    }
+  });
+
   return (
     <group position={[0, -2, -20]}>
+      {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2.2, 0, 0]} position={[0, -2, 0]} receiveShadow>
         <planeGeometry args={[200, 200, 1, 1]} />
-        <meshStandardMaterial color="#0b1020" roughness={1} metalness={0} />
+        <meshStandardMaterial color="#0a0f1e" roughness={1} metalness={0} />
       </mesh>
+
+      {/* Horizon ring */}
       <mesh position={[0, -1, 0]} castShadow>
         <torusGeometry args={[12, 1.6, 32, 100]} />
-        <meshStandardMaterial emissive="#f59e0b" emissiveIntensity={2.6} color="#f59e0b" />
+        <meshStandardMaterial color="#f59e0b" emissive="#f59e0b" emissiveIntensity={2.2} roughness={0.4} metalness={0.1} />
       </mesh>
-      <mesh position={[0, 2, -20]}>
-        <sphereGeometry args={[4, 64, 64]} />
-        <meshBasicMaterial color="#fde68a" />
-      </mesh>
+
+      {/* Sun with warm emissive and a subtle halo */}
+      <group ref={sun} position={[0, 2, -20]}>
+        {/* Core */}
+        <mesh>
+          <sphereGeometry args={[4, 64, 64]} />
+          <meshStandardMaterial color="#ffb648" emissive="#ffae00" emissiveIntensity={3.2} roughness={0.25} metalness={0.05} />
+        </mesh>
+        {/* Halo */}
+        <mesh>
+          <sphereGeometry args={[4.6, 32, 32]} />
+          <meshBasicMaterial color="#ffae00" transparent opacity={0.2} />
+        </mesh>
+        {/* Inner light boost */}
+        <pointLight color="#ffd166" intensity={2.2} distance={50} decay={2} />
+      </group>
     </group>
   );
 }
@@ -88,8 +137,9 @@ function Scene() {
   const scroll = useScroll();
   const cam = useRef();
   const ambient = useRef();
-  const dir = useRef();
-  const fogColor = useRef(new THREE.Color('#05070f'));
+  const dirWarm = useRef();
+  const dirCool = useRef();
+  const fogColor = useRef(new THREE.Color('#07091a'));
 
   useFrame((state) => {
     const o = scroll.offset; // 0..1
@@ -115,34 +165,48 @@ function Scene() {
       cam.current.lookAt(look);
     }
 
-    const neonPhase = Math.min(1, Math.max(0, (seg - 1.2) / 1.2));
-    const dawn = Math.min(1, Math.max(0, (seg - 2.4) / 1.2));
+    // Lighting blend: cool neon to warm sunrise
+    const neonPhase = Math.min(1, Math.max(0, (seg - 1.0) / 1.2));
+    const dawn = Math.min(1, Math.max(0, (seg - 2.2) / 1.2));
 
-    if (ambient.current) ambient.current.intensity = lerp(0.12, 0.8, dawn) + neonPhase * 0.25;
-    if (dir.current) {
-      dir.current.intensity = lerp(0.6, 2.4, dawn);
-      dir.current.position.x = lerp(-6, 6, dawn);
-      dir.current.position.y = lerp(1, 8, dawn);
-      dir.current.color.set(new THREE.Color().lerpColors(new THREE.Color('#3b82f6'), new THREE.Color('#f59e0b'), dawn));
+    if (ambient.current) ambient.current.intensity = lerp(0.12, 0.7, dawn) + neonPhase * 0.25;
+    if (dirCool.current) {
+      dirCool.current.intensity = lerp(1.4, 0.6, dawn);
+      dirCool.current.color.set('#60a5fa');
+      dirCool.current.position.set(-6, 4, 6);
+    }
+    if (dirWarm.current) {
+      dirWarm.current.intensity = lerp(0.3, 2.4, dawn);
+      dirWarm.current.color.set('#f59e0b');
+      dirWarm.current.position.set(6, lerp(1, 8, dawn), 2);
     }
 
-    const colorFrom = new THREE.Color('#05070f');
+    // Fog/background evolves from deep blue to lighter dusk
+    const colorFrom = new THREE.Color('#07091a');
     const colorTo = new THREE.Color('#0e1629');
     fogColor.current.lerpColors(colorFrom, colorTo, dawn * 0.8 + neonPhase * 0.2);
     state.scene.background = fogColor.current;
-    state.scene.fog = new THREE.Fog(state.scene.background, 6, 40);
+    state.scene.fog = new THREE.Fog(state.scene.background, 6, 42);
   });
 
   return (
     <>
       <PerspectiveCamera ref={cam} makeDefault position={[0, 0, 12]} fov={50} />
       <ambientLight ref={ambient} intensity={0.18} />
-      <directionalLight ref={dir} position={[0, 3, 5]} intensity={1.2} castShadow />
+      <directionalLight ref={dirCool} position={[-6, 4, 6]} intensity={1.1} castShadow />
+      <directionalLight ref={dirWarm} position={[6, 3, 2]} intensity={0.8} castShadow />
 
-      {/* Discovery: glowing orb */}
+      {/* Discovery orb */}
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[1.2, 64, 64]} />
-        <meshPhysicalMaterial emissive="#93c5fd" emissiveIntensity={2.4} color="#1e3a8a" roughness={0.35} metalness={0.3} clearcoat={0.4} />
+        <meshPhysicalMaterial
+          color="#1e3a8a"
+          emissive="#93c5fd"
+          emissiveIntensity={2.2}
+          roughness={0.35}
+          metalness={0.3}
+          clearcoat={0.4}
+        />
       </mesh>
 
       {/* Neon city */}
@@ -151,11 +215,11 @@ function Scene() {
       </group>
 
       {/* Sunrise & horizon */}
-      <GlowingHorizon />
+      <SunAndHorizon />
 
       {/* Space dust */}
       <group position={[0, 0, 0]}>
-        <Particles count={1200} spread={120} />
+        <Particles count={1000} spread={140} />
       </group>
     </>
   );
@@ -173,7 +237,7 @@ export default function StoryScroll3D() {
           outputColorSpace: THREE.SRGBColorSpace,
         }}
         onCreated={(state) => {
-          state.gl.setClearColor('#05070f', 1);
+          state.gl.setClearColor('#07091a', 1);
         }}
         className="fixed left-0 top-0 z-[5] h-screen w-screen"
       >
