@@ -1,11 +1,11 @@
 import React, { useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { ScrollControls, Scroll, useScroll, PerspectiveCamera, Stars } from '@react-three/drei';
+import { ScrollControls, Scroll, useScroll, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
 
-function Particles({ count = 1200, spread = 80 }) {
-  const points = useMemo(() => {
+function Particles({ count = 1000, spread = 100 }) {
+  const points = React.useMemo(() => {
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
@@ -20,14 +20,14 @@ function Particles({ count = 1200, spread = 80 }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" count={points.length / 3} array={points} itemSize={3} />
       </bufferGeometry>
-      <pointsMaterial color="#a3baff" size={0.06} sizeAttenuation depthWrite={false} transparent opacity={0.8} />
+      <pointsMaterial color="#c7d2fe" size={0.08} sizeAttenuation depthWrite={false} transparent opacity={0.85} />
     </points>
   );
 }
 
 function NeonCity() {
   const group = useRef();
-  const boxes = useMemo(() => {
+  const boxes = React.useMemo(() => {
     const b = [];
     const grid = 10;
     for (let x = -grid; x <= grid; x++) {
@@ -39,22 +39,22 @@ function NeonCity() {
     return b;
   }, []);
 
-  useFrame((state) => {
+  useFrame(() => {
     if (!group.current) return;
-    group.current.rotation.y += 0.0008;
+    group.current.rotation.y += 0.001;
   });
 
   return (
     <group ref={group}>
       {boxes.map((b, i) => (
-        <mesh key={i} position={b.position}>
+        <mesh key={i} position={b.position} castShadow receiveShadow>
           <boxGeometry args={[1, b.height, 1]} />
           <meshStandardMaterial
-            color="#0ea5e9"
-            emissive="#38bdf8"
-            emissiveIntensity={1.6}
-            roughness={0.3}
-            metalness={0.4}
+            color="#3b82f6"
+            emissive="#60a5fa"
+            emissiveIntensity={2}
+            roughness={0.25}
+            metalness={0.5}
           />
         </mesh>
       ))}
@@ -65,13 +65,13 @@ function NeonCity() {
 function GlowingHorizon() {
   return (
     <group position={[0, -2, -20]}>
-      <mesh rotation={[-Math.PI / 2.2, 0, 0]} position={[0, -2, 0]}>
+      <mesh rotation={[-Math.PI / 2.2, 0, 0]} position={[0, -2, 0]} receiveShadow>
         <planeGeometry args={[200, 200, 1, 1]} />
         <meshStandardMaterial color="#0b1020" roughness={1} metalness={0} />
       </mesh>
-      <mesh position={[0, -1, 0]}>
+      <mesh position={[0, -1, 0]} castShadow>
         <torusGeometry args={[12, 1.6, 32, 100]} />
-        <meshStandardMaterial emissive="#f59e0b" emissiveIntensity={2} color="#f59e0b" />
+        <meshStandardMaterial emissive="#f59e0b" emissiveIntensity={2.4} color="#f59e0b" />
       </mesh>
       <mesh position={[0, 2, -20]}>
         <sphereGeometry args={[4, 64, 64]} />
@@ -88,7 +88,7 @@ function Scene() {
   const dir = useRef();
   const fogColor = useRef(new THREE.Color('#030409'));
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const o = scroll.offset; // 0..1
     const lerp = THREE.MathUtils.lerp;
 
@@ -115,36 +115,34 @@ function Scene() {
     }
 
     // Lighting mood & fog progression
-    const darkness = 1 - Math.min(1, seg / 1.2); // fades by first chapter
     const neonPhase = Math.min(1, Math.max(0, (seg - 1.2) / 1.2));
     const dawn = Math.min(1, Math.max(0, (seg - 2.4) / 1.2));
 
-    if (ambient.current) ambient.current.intensity = lerp(0.05, 0.6, dawn) + neonPhase * 0.2;
+    if (ambient.current) ambient.current.intensity = lerp(0.08, 0.7, dawn) + neonPhase * 0.25;
     if (dir.current) {
-      dir.current.intensity = lerp(0.2, 2.2, dawn);
+      dir.current.intensity = lerp(0.3, 2.4, dawn);
       dir.current.position.x = lerp(-6, 6, dawn);
       dir.current.position.y = lerp(1, 8, dawn);
-      dir.current.color.set(new THREE.Color().lerpColors(new THREE.Color('#0ea5e9'), new THREE.Color('#f59e0b'), dawn));
+      dir.current.color.set(new THREE.Color().lerpColors(new THREE.Color('#3b82f6'), new THREE.Color('#f59e0b'), dawn));
     }
 
     const colorFrom = new THREE.Color('#030409');
-    const colorTo = new THREE.Color('#1e293b');
+    const colorTo = new THREE.Color('#111827');
     fogColor.current.lerpColors(colorFrom, colorTo, dawn * 0.8 + neonPhase * 0.2);
     state.scene.background = fogColor.current;
-    state.scene.fog = new THREE.Fog(state.scene.background, 8 - dawn * 2, 28 + dawn * 12);
+    state.scene.fog = new THREE.Fog(state.scene.background, 6, 40);
   });
 
   return (
     <>
       <PerspectiveCamera ref={cam} makeDefault position={[0, 0, 12]} fov={50} />
-      <ambientLight ref={ambient} intensity={0.1} />
-      <directionalLight ref={dir} position={[0, 3, 5]} intensity={0.6} castShadow />
+      <ambientLight ref={ambient} intensity={0.15} />
+      <directionalLight ref={dir} position={[0, 3, 5]} intensity={0.8} castShadow />
 
-      {/* Chapter elements */}
       {/* Discovery: glowing orb */}
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[1.2, 64, 64]} />
-        <meshStandardMaterial emissive="#60a5fa" emissiveIntensity={1.5} color="#1e3a8a" roughness={0.4} metalness={0.2} />
+        <meshStandardMaterial emissive="#93c5fd" emissiveIntensity={1.8} color="#1e3a8a" roughness={0.35} metalness={0.25} />
       </mesh>
 
       {/* Neon city */}
@@ -157,7 +155,7 @@ function Scene() {
 
       {/* Space dust */}
       <group position={[0, 0, 0]}>
-        <Particles count={1400} spread={120} />
+        <Particles count={1200} spread={120} />
       </group>
     </>
   );
@@ -169,7 +167,7 @@ export default function StoryScroll3D() {
       <Canvas
         dpr={[1, 1.5]}
         gl={{ antialias: true }}
-        className="fixed left-0 top-0 h-screen w-screen"
+        className="fixed left-0 top-0 z-[5] h-screen w-screen"
       >
         <ScrollControls pages={5} damping={0.2}>
           <Scene />
@@ -200,7 +198,7 @@ function Chapter({ y = 0, title, text }) {
       className="w-[88vw] max-w-3xl text-center"
     >
       <h2 className="text-3xl font-semibold tracking-tight sm:text-5xl">{title}</h2>
-      <p className="mx-auto mt-3 max-w-xl text-sm text-white/75 sm:text-base">{text}</p>
+      <p className="mx-auto mt-3 max-w-xl text-sm text-white/80 sm:text-base">{text}</p>
     </motion.div>
   );
 }
