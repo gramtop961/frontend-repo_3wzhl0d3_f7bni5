@@ -4,30 +4,31 @@ import { ScrollControls, Scroll, useScroll, PerspectiveCamera } from '@react-thr
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
 
-function Particles({ count = 1000, spread = 100 }) {
-  const points = React.useMemo(() => {
-    const positions = new Float32Array(count * 3);
+function Particles({ count = 1200, spread = 120 }) {
+  const positions = useMemo(() => {
+    const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
-      positions[i3 + 0] = (Math.random() - 0.5) * spread;
-      positions[i3 + 1] = (Math.random() - 0.5) * spread;
-      positions[i3 + 2] = (Math.random() - 0.5) * spread;
+      arr[i3 + 0] = (Math.random() - 0.5) * spread;
+      arr[i3 + 1] = (Math.random() - 0.5) * spread;
+      arr[i3 + 2] = (Math.random() - 0.5) * spread;
     }
-    return positions;
+    return arr;
   }, [count, spread]);
+
   return (
     <points>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={points.length / 3} array={points} itemSize={3} />
+        <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
       </bufferGeometry>
-      <pointsMaterial color="#c7d2fe" size={0.08} sizeAttenuation depthWrite={false} transparent opacity={0.85} />
+      <pointsMaterial color="#9ec6ff" size={0.08} sizeAttenuation depthWrite={false} transparent opacity={0.85} />
     </points>
   );
 }
 
 function NeonCity() {
   const group = useRef();
-  const boxes = React.useMemo(() => {
+  const boxes = useMemo(() => {
     const b = [];
     const grid = 10;
     for (let x = -grid; x <= grid; x++) {
@@ -41,7 +42,7 @@ function NeonCity() {
 
   useFrame(() => {
     if (!group.current) return;
-    group.current.rotation.y += 0.001;
+    group.current.rotation.y += 0.0012;
   });
 
   return (
@@ -49,12 +50,14 @@ function NeonCity() {
       {boxes.map((b, i) => (
         <mesh key={i} position={b.position} castShadow receiveShadow>
           <boxGeometry args={[1, b.height, 1]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color="#3b82f6"
-            emissive="#60a5fa"
-            emissiveIntensity={2}
+            emissive="#6ea8ff"
+            emissiveIntensity={2.2}
             roughness={0.25}
-            metalness={0.5}
+            metalness={0.6}
+            clearcoat={0.6}
+            clearcoatRoughness={0.3}
           />
         </mesh>
       ))}
@@ -71,7 +74,7 @@ function GlowingHorizon() {
       </mesh>
       <mesh position={[0, -1, 0]} castShadow>
         <torusGeometry args={[12, 1.6, 32, 100]} />
-        <meshStandardMaterial emissive="#f59e0b" emissiveIntensity={2.4} color="#f59e0b" />
+        <meshStandardMaterial emissive="#f59e0b" emissiveIntensity={2.6} color="#f59e0b" />
       </mesh>
       <mesh position={[0, 2, -20]}>
         <sphereGeometry args={[4, 64, 64]} />
@@ -86,23 +89,21 @@ function Scene() {
   const cam = useRef();
   const ambient = useRef();
   const dir = useRef();
-  const fogColor = useRef(new THREE.Color('#030409'));
+  const fogColor = useRef(new THREE.Color('#05070f'));
 
   useFrame((state) => {
     const o = scroll.offset; // 0..1
     const lerp = THREE.MathUtils.lerp;
 
-    // Camera keyframes for 5 chapters
     const targets = [
-      { pos: new THREE.Vector3(0, 0, 12), look: new THREE.Vector3(0, 0, 0) }, // Darkness
-      { pos: new THREE.Vector3(0, 1, 6), look: new THREE.Vector3(0, 0, 0) }, // Discovery (orb)
-      { pos: new THREE.Vector3(0, 6, 12), look: new THREE.Vector3(0, 0, 0) }, // Neon city
-      { pos: new THREE.Vector3(0, 3, 10), look: new THREE.Vector3(0, 1, -6) }, // Sunrise
-      { pos: new THREE.Vector3(0, 4, 14), look: new THREE.Vector3(0, 0, -12) }, // Horizon
+      { pos: new THREE.Vector3(0, 0, 12), look: new THREE.Vector3(0, 0, 0) },
+      { pos: new THREE.Vector3(0, 1, 6), look: new THREE.Vector3(0, 0, 0) },
+      { pos: new THREE.Vector3(0, 6, 12), look: new THREE.Vector3(0, 0, 0) },
+      { pos: new THREE.Vector3(0, 3, 10), look: new THREE.Vector3(0, 1, -6) },
+      { pos: new THREE.Vector3(0, 4, 14), look: new THREE.Vector3(0, 0, -12) },
     ];
 
-    // Map offset to segment
-    const seg = o * 4; // 0..4
+    const seg = o * 4;
     const i = Math.floor(seg);
     const t = seg - i;
     const a = targets[i] || targets[0];
@@ -114,20 +115,19 @@ function Scene() {
       cam.current.lookAt(look);
     }
 
-    // Lighting mood & fog progression
     const neonPhase = Math.min(1, Math.max(0, (seg - 1.2) / 1.2));
     const dawn = Math.min(1, Math.max(0, (seg - 2.4) / 1.2));
 
-    if (ambient.current) ambient.current.intensity = lerp(0.08, 0.7, dawn) + neonPhase * 0.25;
+    if (ambient.current) ambient.current.intensity = lerp(0.12, 0.8, dawn) + neonPhase * 0.25;
     if (dir.current) {
-      dir.current.intensity = lerp(0.3, 2.4, dawn);
+      dir.current.intensity = lerp(0.6, 2.4, dawn);
       dir.current.position.x = lerp(-6, 6, dawn);
       dir.current.position.y = lerp(1, 8, dawn);
       dir.current.color.set(new THREE.Color().lerpColors(new THREE.Color('#3b82f6'), new THREE.Color('#f59e0b'), dawn));
     }
 
-    const colorFrom = new THREE.Color('#030409');
-    const colorTo = new THREE.Color('#111827');
+    const colorFrom = new THREE.Color('#05070f');
+    const colorTo = new THREE.Color('#0e1629');
     fogColor.current.lerpColors(colorFrom, colorTo, dawn * 0.8 + neonPhase * 0.2);
     state.scene.background = fogColor.current;
     state.scene.fog = new THREE.Fog(state.scene.background, 6, 40);
@@ -136,13 +136,13 @@ function Scene() {
   return (
     <>
       <PerspectiveCamera ref={cam} makeDefault position={[0, 0, 12]} fov={50} />
-      <ambientLight ref={ambient} intensity={0.15} />
-      <directionalLight ref={dir} position={[0, 3, 5]} intensity={0.8} castShadow />
+      <ambientLight ref={ambient} intensity={0.18} />
+      <directionalLight ref={dir} position={[0, 3, 5]} intensity={1.2} castShadow />
 
       {/* Discovery: glowing orb */}
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[1.2, 64, 64]} />
-        <meshStandardMaterial emissive="#93c5fd" emissiveIntensity={1.8} color="#1e3a8a" roughness={0.35} metalness={0.25} />
+        <meshPhysicalMaterial emissive="#93c5fd" emissiveIntensity={2.4} color="#1e3a8a" roughness={0.35} metalness={0.3} clearcoat={0.4} />
       </mesh>
 
       {/* Neon city */}
@@ -166,12 +166,19 @@ export default function StoryScroll3D() {
     <section className="relative h-[520vh] w-screen bg-black">
       <Canvas
         dpr={[1, 1.5]}
-        gl={{ antialias: true }}
+        shadows
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          outputColorSpace: THREE.SRGBColorSpace,
+        }}
+        onCreated={(state) => {
+          state.gl.setClearColor('#05070f', 1);
+        }}
         className="fixed left-0 top-0 z-[5] h-screen w-screen"
       >
         <ScrollControls pages={5} damping={0.2}>
           <Scene />
-          {/* Floating HTML for narrative */}
           <Scroll html>
             <div className="pointer-events-none relative z-10 text-white">
               <Chapter y="10vh" title="Darkness" text="Where silence breathes and stars are seeds." />
